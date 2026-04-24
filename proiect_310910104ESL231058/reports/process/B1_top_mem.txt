@@ -1,0 +1,11 @@
+USER         PID %MEM
+mpopik    196311  2.8
+mpopik      2237  2.5
+mpopik    186381  2.3
+mpopik      1322  1.7
+mpopik    195260  1.7
+mpopik      2278  1.5
+mpopik      2558  1.3
+mpopik    185072  1.0
+mpopik      2534  1.0
+mpopik    185057  1.0
