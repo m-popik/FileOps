@@ -95,6 +95,14 @@ clean() {
     echo "gata"
 }
 
+clean-logs() {
+    echo "curatare logs..."
+
+    rm -f logs/* 2>/dev/null
+
+    echo "gata"
+}
+
 test() {
     REPORTS="reports/T2_tests.txt"
 
@@ -181,6 +189,16 @@ case "$SUBCOM" in
     test)
         echo "test run..."
         test
+        ;;
+    help)
+        echo "init: creeaza fisierele"
+        echo "clean: sterge continutul din bin si tmp/obj"
+        echo "run [exec]: ruleaza executabila primita ca argument"
+        echo "test: ruleaza scripturile din tests si produce rezultatul acestora in tests"
+        echo "clean-logs: sterge continutul fisierului logs(in afara de apelul clean-logs in sine)"
+        ;;
+    clean-logs)
+        clean-logs
         ;;
     *)
         echo "subcomanda gresita/inexistenta"
