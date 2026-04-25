@@ -1,1 +1,1 @@
-test test test 123
+Repo pentru temele de la SO.
