@@ -1,4 +1,0 @@
-reports/fs
-reports/process
-reports/proc
-reports/pipeline

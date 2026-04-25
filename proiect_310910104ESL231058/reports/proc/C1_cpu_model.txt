@@ -1,1 +1,0 @@
-model name	: 13th Gen Intel(R) Core(TM) i7-1355U

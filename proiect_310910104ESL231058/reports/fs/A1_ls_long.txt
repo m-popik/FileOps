@@ -1,4 +1,0 @@
-total 12
-drwxr-xr-x 2 mpopik mpopik 4096 Mar  8 18:24 .
-drwxr-xr-x 5 mpopik mpopik 4096 Mar  8 17:40 ..
--rwxr-xr-x 1 mpopik mpopik 1236 Mar 11 19:23 t1_audit.sh
