@@ -92,7 +92,7 @@ void parc_dir (int db_fd, const char *dir_path)
     closedir(dir);    
 }
 
-exit_update(int db_fd)
+void exit_update(int db_fd)
 {
     db_header_t header;
     set_write_lock(db_fd, 0, sizeof(db_header_t));
@@ -106,7 +106,7 @@ exit_update(int db_fd)
         header.snapshot_state = STATE_SEALED;
     }
 
-    lseek(db_fd, &header, sizeof(db_header_t));
+    lseek(db_fd, 0, sizeof(db_header_t));
     write(db_fd, &header, sizeof(db_header_t));
     release_lock(db_fd, 0, sizeof(db_header_t));
 }
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
     write(db_fd, &header, sizeof(db_header_t));
     release_lock(db_fd, 0, sizeof(db_header_t));
 
-    parc_dir(target_dir, db_fd);
+    parc_dir(db_fd, target_dir);
 
     exit_update(db_fd);
 
