@@ -38,7 +38,7 @@ build (){
 
     mkdir -p tmp/obj
 
-    find "$SRC_DIR" -name "*.c" | while read -r FILE_PATH; do
+    while IFS= read -r FILE_PATH; do
         FILENAME=$(basename "$FILE_PATH")
         OBJ_NAME="${FILENAME%.c}.o"
         OBJ_PATH="tmp/obj/$OBJ_NAME"
@@ -51,13 +51,26 @@ build (){
                     return 1
                 fi
         fi
+    done < <(find "$SRC_DIR" -name "*.c")
 
-        if [[ "$FILENAME" == main_* ]]; then
-            EXE_NAME=$(echo "$FILENAME" | sed 's/^main_//;s/\.c$//')
+    SHARED_OBJ=$(find tmp/obj -name "*.o" ! -name "main_*.o" 2>/dev/null)
+
+    for MAIN_OBJ in tmp/obj/main_*.o; do
+        if [ -f "$MAIN_OBJ" ]; then 
+            EXE_NAME=$(basename "$MAIN_OBJ" | sed 's/^main_//;s/\.o$//')
             EXE_PATH="bin/$EXE_NAME"
 
-            echo "edit executabil: $EXE_PATH"
-            gcc $CFLAGS tmp/obj/*.o -o "$EXE_PATH"
+            echo "editat exec $EXE_PATH"
+
+            gcc $CFLAGS "$MAIN_OBJ" $SHARED_OBJ -o "$EXE_PATH"
+
+            if [ $? -eq 0 ]; then
+                echo "stergere: $MAIN_OBJ"
+                rm -f "$MAIN_OBJ"
+            else
+                echo "eroare asamblare $EXE_NAME"
+                return 1
+            fi
         fi
     done
 }
@@ -192,6 +205,7 @@ case "$SUBCOM" in
         ;;
     help)
         echo "init: creeaza fisierele"
+        echo "build: compileaza si asambleaza sursele din [file]"
         echo "clean: sterge continutul din bin si tmp/obj"
         echo "run [exec]: ruleaza executabila primita ca argument"
         echo "test: ruleaza scripturile din tests si produce rezultatul acestora in tests"
