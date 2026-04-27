@@ -120,12 +120,14 @@ int main(int argc, char *argv[])
     const char *target_dir = argv[1];
     const char *db_path = argv[2];
 
-    int db_fd = open(db_path, O_RDWR | O_CREAT, 644);
+    int db_fd = open(db_path, O_RDWR | O_CREAT, 0644);
     if (db_fd == -1)
     {
         perror("eroare la deschiderea bazei de date");
         return EXIT_FAILURE;
     }
+
+    set_write_lock(db_fd, 0, sizeof(db_header_t));
 
     struct stat db_stat;
     fstat(db_fd, &db_stat);
@@ -144,7 +146,6 @@ int main(int argc, char *argv[])
     }
 
     db_header_t header;
-    set_write_lock(db_fd, 0, sizeof(db_header_t));
     lseek(db_fd, 0, SEEK_SET);
     read(db_fd, &header, sizeof(db_header_t));
 

@@ -96,7 +96,7 @@ run() {
         exit 1
     fi
 
-    "$EXE_PATH" "$@"
+    exec "$EXE_PATH" "$@"
 }
 
 clean() {
