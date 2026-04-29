@@ -63,7 +63,7 @@ void parc_dir (int db_fd, const char *dir_path)
             continue;
         }
 
-        snprintf(path_full, PATH_MAX, "%s%s", dir_path, entry->d_name); //calea absolutaa completa
+        snprintf(path_full, PATH_MAX, "%s/%s", dir_path, entry->d_name); //calea absolutaa completa
 
         if(lstat(path_full, &st) == -1)
         {
@@ -106,7 +106,7 @@ void exit_update(int db_fd)
         header.snapshot_state = STATE_SEALED;
     }
 
-    lseek(db_fd, 0, sizeof(db_header_t));
+    lseek(db_fd, 0, SEEK_SET);
     write(db_fd, &header, sizeof(db_header_t));
     release_lock(db_fd, 0, sizeof(db_header_t));
 }

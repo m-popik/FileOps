@@ -22,6 +22,8 @@ echo "generare snapshot 2"
 cp data/index1.db data/index2.db
 ./tools/fileops.sh run fileops_indexer src data/index2.db
 
+./tools/fileops.sh run db_diff data/index1.db data/index2.db reports/T3_filediff.txt
+
 echo "test concurenta pe proc_snapshot"
 ./tools/fileops.sh run proc_snapshot data/proc1.db &
 PID4=$!
@@ -38,3 +40,5 @@ echo "gata snapshot"
 sleep 2
 
 ./tools/fileops.sh run proc_snapshot data/proc2.db
+
+./tools/fileops.sh run db_diff data/proc1.db data/proc2.db reports/T3_procdiff.txt

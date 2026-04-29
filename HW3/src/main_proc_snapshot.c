@@ -62,7 +62,7 @@ void proc_parsing(const char *pid_str, int db_fd)
     char path[PATH_MAX];
     char line[1024];
 
-    snprintf(path, sizeof(path), "proc/%s/stat", pid_str);
+    snprintf(path, sizeof(path), "/proc/%s/stat", pid_str);
     FILE *fstat = fopen(path, "r");
     if (fstat)
     {
@@ -96,9 +96,9 @@ void proc_parsing(const char *pid_str, int db_fd)
     fclose(fstat);
     }
 
-    snprintf(path, sizeof(path), "proc/%s/cmdline", pid_str);
+    snprintf(path, sizeof(path), "/proc/%s/cmdline", pid_str);
     int fd_cmd = open(path, O_RDONLY);
-    if (fd_cmd != 1)
+    if (fd_cmd != -1)
     {
         ssize_t bytes_read = read(fd_cmd, record.cmd, MAX_CMD_LEN -1);
         if (bytes_read > 0)
@@ -153,7 +153,7 @@ void exit_update(int db_fd)
         header.snapshot_state = STATE_SEALED;
     }
 
-    lseek(db_fd, 0, sizeof(db_header_t));
+    lseek(db_fd, 0, SEEK_SET);
     write(db_fd, &header, sizeof(db_header_t));
     release_lock(db_fd, 0, sizeof(db_header_t));
 }
