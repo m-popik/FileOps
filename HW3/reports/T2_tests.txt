@@ -1,0 +1,3 @@
+PASS: tests/t3_concurrency.sh
+PASS: tests/test_build_recursive.sh
+PASS: tests/test_init.sh

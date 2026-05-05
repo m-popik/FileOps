@@ -1,0 +1,23 @@
+raport diff
+snapshot vechi id: 1777479118 | inregistrari: 933
+snapshot nou id: 1777479120 | inregistrari: 309
+[MODIFICAT] PID: 292 [jbd2/nvme0n1p7-] | Stare: D->S | RAM: 0->0 bytes
+[MODIFICAT] PID: 1316 [cinnamon] | Stare: S->S | RAM: 215965696->216096768 bytes
+[MODIFICAT] PID: 11460 [code] | Stare: S->S | RAM: 220663808->220794880 bytes
+[MODIFICAT] PID: 11498 [code] | Stare: S->S | RAM: 272502784->272764928 bytes
+[MODIFICAT] PID: 11549 [code] | Stare: S->S | RAM: 492228608->493539328 bytes
+[MODIFICAT] PID: 11566 [code] | Stare: S->S | RAM: 129048576->129179648 bytes
+[MODIFICAT] PID: 11581 [code] | Stare: S->S | RAM: 488796160->488914944 bytes
+[MODIFICAT] PID: 11585 [code] | Stare: S->S | RAM: 119390208->119259136 bytes
+[MODIFICAT] PID: 12750 [cpptools] | Stare: S->S | RAM: 48144384->42680320 bytes
+[MODIFICAT] PID: 15830 [brave] | Stare: S->S | RAM: 509394944->509259776 bytes
+[PORNIT]    PID: 20909 [proc_snapshot]
+[OPRIT]     PID: 20873 [proc_snapshot]
+[OPRIT]     PID: 20874 [proc_snapshot]
+[OPRIT]     PID: 20875 [proc_snapshot]
+[OPRIT]     PID: 20873 []
+[OPRIT]     PID: 20873 []
+[OPRIT]     PID: 20874 [proc_snapshot]
+[OPRIT]     PID: 20874 [proc_snapshot]
+[OPRIT]     PID: 20875 [proc_snapshot]
+[OPRIT]     PID: 20875 [proc_snapshot]
