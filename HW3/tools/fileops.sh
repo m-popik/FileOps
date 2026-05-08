@@ -76,6 +76,10 @@ build (){
 }
 
 run() {
+    if [ "$1" = "--" ]; then
+        shift
+    fi
+
     if [ -z "$1" ]; then
         echo "specifica numele executabilei"
         exit 1
