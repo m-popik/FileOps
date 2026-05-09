@@ -4,6 +4,7 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <openssl/evp.h>
 #include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,13 +16,58 @@
 #include <unistd.h>
 
 #include "../include/ipc_prot.h"
+
 void usage_instr(const char *prog_name) {
   fprintf(stderr, "Usage: %s --worker-id <id> --ipc <path>\n", prog_name);
 }
 
-// temporar
 void calculate_sha(const char *file_path, char *output_hash) {
-  strncpy(output_hash, "dummy_hash", 64);
+  unsigned char hash[EVP_MAX_MD_SIZE];
+  unsigned int hash_len;
+  EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
+
+  if (mdctx == NULL) {
+    strncpy(output_hash, "CTX error", 65);
+    return;
+  }
+
+  if (EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) != 1) {
+    EVP_MD_CTX_free(mdctx);
+    strncpy(output_hash, "EVP_init error", 65);
+    return;
+  }
+
+  FILE *file = fopen(file_path, "rb");
+  if (!file) {
+    EVP_MD_CTX_free(mdctx);
+    strncpy(output_hash, "file_unreadable", 65);
+    return;
+  }
+
+  const int bufSize = 32768;
+  unsigned char *buffer = malloc(bufSize);
+  if (!buffer) {
+    fclose(file);
+    EVP_MD_CTX_free(mdctx);
+    strncpy(output_hash, "malloc error", 65);
+    return;
+  }
+
+  int bytesRead = 0;
+
+  while ((bytesRead = fread(buffer, 1, bufSize, file)) > 0) {
+    EVP_DigestUpdate(mdctx, buffer, bytesRead);
+  }
+
+  EVP_DigestFinal_ex(mdctx, hash, &hash_len);
+
+  fclose(file);
+  free(buffer);
+  EVP_MD_CTX_free(mdctx);
+
+  for (unsigned int i = 0; i < hash_len; i++)
+    sprintf(output_hash + i * 2, "%02x", hash[i]);
+
   output_hash[64] = '\0';
 }
 

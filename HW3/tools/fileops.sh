@@ -62,7 +62,7 @@ build (){
 
             echo "editat exec $EXE_PATH"
 
-            gcc $CFLAGS "$MAIN_OBJ" $SHARED_OBJ -o "$EXE_PATH"
+            gcc $CFLAGS "$MAIN_OBJ" $SHARED_OBJ -o "$EXE_PATH" -lcrypto
 
             if [ $? -eq 0 ]; then
                 echo "stergere: $MAIN_OBJ"
