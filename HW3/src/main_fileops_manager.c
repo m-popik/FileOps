@@ -27,7 +27,7 @@ typedef struct {
 
 void howto(const char *prog) {
   fprintf(stderr, "Ghid:");
-  fprintf(stderr, "Inventariere: %s -root <dir> --workers <N>\n", prog);
+  fprintf(stderr, "Inventariere: %s --root <dir> --workers <N>\n", prog);
   fprintf(stderr, "Verificare: %s <db_path> --verify\n", prog);
   fprintf(stderr, "Sumar: %s <db_path> --db\n", prog);
 }
@@ -127,7 +127,7 @@ int verify_db(const char *db_path) {
 
   struct stat st;
   if (fstat(fd, &st) == -1) {
-    perror("fstat");
+    perror("fstat error");
     close(fd);
     return EXIT_FAILURE;
   }
@@ -158,7 +158,7 @@ int verify_db(const char *db_path) {
             (long)expected, (long)st.st_size);
     return EXIT_FAILURE;
   }
-
+  printf("%s este valid\n", db_path);
   return EXIT_SUCCESS;
 }
 
@@ -229,7 +229,7 @@ int main(int argc, char *argv[]) {
     if (pid == 0) {
       char worker_id_str[16];
       snprintf(worker_id_str, sizeof(worker_id_str), "%d", i);
-
+      // path, arg0, arg1,...
       execl("./bin/fileops_worker", "./bin/fileops_worker", "--worker-id",
             worker_id_str, "--ipc", ipc_path, NULL);
 
