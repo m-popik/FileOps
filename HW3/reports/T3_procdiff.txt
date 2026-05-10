@@ -1,23 +1,19 @@
 raport diff
-snapshot vechi id: 1777479118 | inregistrari: 933
-snapshot nou id: 1777479120 | inregistrari: 309
-[MODIFICAT] PID: 292 [jbd2/nvme0n1p7-] | Stare: D->S | RAM: 0->0 bytes
-[MODIFICAT] PID: 1316 [cinnamon] | Stare: S->S | RAM: 215965696->216096768 bytes
-[MODIFICAT] PID: 11460 [code] | Stare: S->S | RAM: 220663808->220794880 bytes
-[MODIFICAT] PID: 11498 [code] | Stare: S->S | RAM: 272502784->272764928 bytes
-[MODIFICAT] PID: 11549 [code] | Stare: S->S | RAM: 492228608->493539328 bytes
-[MODIFICAT] PID: 11566 [code] | Stare: S->S | RAM: 129048576->129179648 bytes
-[MODIFICAT] PID: 11581 [code] | Stare: S->S | RAM: 488796160->488914944 bytes
-[MODIFICAT] PID: 11585 [code] | Stare: S->S | RAM: 119390208->119259136 bytes
-[MODIFICAT] PID: 12750 [cpptools] | Stare: S->S | RAM: 48144384->42680320 bytes
-[MODIFICAT] PID: 15830 [brave] | Stare: S->S | RAM: 509394944->509259776 bytes
-[PORNIT]    PID: 20909 [proc_snapshot]
-[OPRIT]     PID: 20873 [proc_snapshot]
-[OPRIT]     PID: 20874 [proc_snapshot]
-[OPRIT]     PID: 20875 [proc_snapshot]
-[OPRIT]     PID: 20873 []
-[OPRIT]     PID: 20873 []
-[OPRIT]     PID: 20874 [proc_snapshot]
-[OPRIT]     PID: 20874 [proc_snapshot]
-[OPRIT]     PID: 20875 [proc_snapshot]
-[OPRIT]     PID: 20875 [proc_snapshot]
+snapshot vechi id: 1778428688 | inregistrari: 954
+snapshot nou id: 1778428690 | inregistrari: 316
+[MODIFICAT] PID: 2840 [brave] | Stare: S->S | RAM: 528064512->527925248 bytes
+[MODIFICAT] PID: 86288 [antigravity] | Stare: S->S | RAM: 285057024->285843456 bytes
+[MODIFICAT] PID: 86332 [antigravity] | Stare: S->S | RAM: 197808128->197742592 bytes
+[MODIFICAT] PID: 86379 [antigravity] | Stare: R->S | RAM: 524193792->532406272 bytes
+[MODIFICAT] PID: 87877 [antigravity] | Stare: S->S | RAM: 208105472->208498688 bytes
+[MODIFICAT] PID: 87878 [antigravity] | Stare: S->S | RAM: 123408384->123670528 bytes
+[PORNIT]    PID: 91129 [proc_snapshot]
+[OPRIT]     PID: 91112 [proc_snapshot]
+[OPRIT]     PID: 91113 [proc_snapshot]
+[OPRIT]     PID: 91114 [proc_snapshot]
+[OPRIT]     PID: 91112 []
+[OPRIT]     PID: 91112 []
+[OPRIT]     PID: 91113 [proc_snapshot]
+[OPRIT]     PID: 91113 [proc_snapshot]
+[OPRIT]     PID: 91114 [proc_snapshot]
+[OPRIT]     PID: 91114 [proc_snapshot]

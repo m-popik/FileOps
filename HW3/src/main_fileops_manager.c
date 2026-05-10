@@ -71,6 +71,7 @@ ipc_layout_t *init_ipc(const char *ipc_path, const char *root_dir,
   sem_init(&layout->results.spaces, 1, MAX_RES_Q_SZ);
 
   strncpy(layout->job_queue.jobs[0].dir_path, root_dir, PATH_MAX);
+  layout->job_queue.jobs[0].depth = 0;
   layout->job_queue.head = 0;
   layout->job_queue.tail = 1;
 
@@ -192,6 +193,7 @@ int main(int argc, char *argv[]) {
   char *db_path = "data/inventory.db";
   int do_verify = 0;
   int do_dump = 0;
+  int max_depth = -1;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
@@ -206,6 +208,8 @@ int main(int argc, char *argv[]) {
       do_verify = 1;
     } else if (strcmp(argv[i], "--dump") == 0) {
       do_dump = 1;
+    } else if (strcmp(argv[i], "--max-depth") == 0 && i + 1 < argc) {
+      max_depth = atoi(argv[++i]);
     }
   }
 
@@ -229,9 +233,13 @@ int main(int argc, char *argv[]) {
     if (pid == 0) {
       char worker_id_str[16];
       snprintf(worker_id_str, sizeof(worker_id_str), "%d", i);
+      
+      char max_depth_str[16];
+      snprintf(max_depth_str, sizeof(max_depth_str), "%d", max_depth);
+
       // path, arg0, arg1,...
       execl("./bin/fileops_worker", "./bin/fileops_worker", "--worker-id",
-            worker_id_str, "--ipc", ipc_path, NULL);
+            worker_id_str, "--ipc", ipc_path, "--max-depth", max_depth_str, NULL);
 
       perror("eroare la exec worker");
       exit(EXIT_FAILURE);

@@ -74,6 +74,7 @@ void calculate_sha(const char *file_path, char *output_hash) {
 int main(int argc, char *argv[]) {
   int worker_id = -1;
   char *ipc_path = NULL;
+  int max_depth = -1;
   unsigned long long mil = 1000000;
 
   struct timeval start_time, end_time;
@@ -84,6 +85,8 @@ int main(int argc, char *argv[]) {
       worker_id = atoi(argv[++i]);
     } else if (strcmp(argv[i], "--ipc") == 0 && i + 1 < argc) {
       ipc_path = argv[++i];
+    } else if (strcmp(argv[i], "--max-depth") == 0 && i + 1 < argc) {
+      max_depth = atoi(argv[++i]);
     }
   }
 
@@ -165,18 +168,20 @@ int main(int argc, char *argv[]) {
           continue;
 
         if (S_ISDIR(file_st.st_mode)) {
+          if (max_depth == -1 || current_job.depth < max_depth) {
+            sem_wait(&layout->glb_mutex);
+            layout->pending_jobs++;
+            sem_post(&layout->glb_mutex);
 
-          sem_wait(&layout->glb_mutex);
-          layout->pending_jobs++;
-          sem_post(&layout->glb_mutex);
-
-          sem_wait(&layout->job_queue.spaces);
-          sem_wait(&layout->job_queue.mutex);
-          strncpy(layout->job_queue.jobs[layout->job_queue.tail].dir_path,
-                  full_path, PATH_MAX);
-          layout->job_queue.tail = (layout->job_queue.tail + 1) % MAX_JOB_Q_SZ;
-          sem_post(&layout->job_queue.mutex);
-          sem_post(&layout->job_queue.items);
+            sem_wait(&layout->job_queue.spaces);
+            sem_wait(&layout->job_queue.mutex);
+            strncpy(layout->job_queue.jobs[layout->job_queue.tail].dir_path,
+                    full_path, PATH_MAX);
+            layout->job_queue.jobs[layout->job_queue.tail].depth = current_job.depth + 1;
+            layout->job_queue.tail = (layout->job_queue.tail + 1) % MAX_JOB_Q_SZ;
+            sem_post(&layout->job_queue.mutex);
+            sem_post(&layout->job_queue.items);
+          }
         } else if (S_ISREG(file_st.st_mode)) {
           // daca este regulat facem un file_record_t
           file_record_t new_record;

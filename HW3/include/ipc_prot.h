@@ -15,6 +15,7 @@
 // rep un director de parcurs
 typedef struct __attribute__((packed)) {
   char dir_path[PATH_MAX];
+  int depth;
 } job_t;
 
 typedef struct __attribute__((packed)) {
