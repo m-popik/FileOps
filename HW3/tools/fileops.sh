@@ -2,7 +2,7 @@
 
 init (){
     if ! command -v gcc &> /dev/null; then
-    echo "Eroare, gcc nu a exista."
+    echo "Eroare, gcc nu exista."
     exit 1
     fi
 
@@ -100,7 +100,7 @@ run() {
         exit 1
     fi
 
-    exec "$EXE_PATH" "$@"
+    "$EXE_PATH" "$@"
 }
 
 clean() {
