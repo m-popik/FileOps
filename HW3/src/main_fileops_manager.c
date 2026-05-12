@@ -210,8 +210,6 @@ int main(int argc, char *argv[]) {
       do_dump = 1;
     } else if (strcmp(argv[i], "--max-depth") == 0 && i + 1 < argc) {
       max_depth = atoi(argv[++i]);
-    } else if (strcmp(argv[i], "-") != 0) {
-      db_path = argv[i];
     }
   }
 
