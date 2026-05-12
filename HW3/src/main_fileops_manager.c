@@ -29,7 +29,7 @@ void howto(const char *prog) {
   fprintf(stderr, "Ghid:");
   fprintf(stderr, "Inventariere: %s --root <dir> --workers <N>\n", prog);
   fprintf(stderr, "Verificare: %s <db_path> --verify\n", prog);
-  fprintf(stderr, "Sumar: %s <db_path> --db\n", prog);
+  fprintf(stderr, "Sumar: %s <db_path> --dump\n", prog);
 }
 ipc_layout_t *init_ipc(const char *ipc_path, const char *root_dir,
                        int num_workers) {
@@ -210,6 +210,8 @@ int main(int argc, char *argv[]) {
       do_dump = 1;
     } else if (strcmp(argv[i], "--max-depth") == 0 && i + 1 < argc) {
       max_depth = atoi(argv[++i]);
+    } else if (strcmp(argv[i], "-") != 0) {
+      db_path = argv[i];
     }
   }
 
@@ -233,13 +235,14 @@ int main(int argc, char *argv[]) {
     if (pid == 0) {
       char worker_id_str[16];
       snprintf(worker_id_str, sizeof(worker_id_str), "%d", i);
-      
+
       char max_depth_str[16];
       snprintf(max_depth_str, sizeof(max_depth_str), "%d", max_depth);
 
       // path, arg0, arg1,...
       execl("./bin/fileops_worker", "./bin/fileops_worker", "--worker-id",
-            worker_id_str, "--ipc", ipc_path, "--max-depth", max_depth_str, NULL);
+            worker_id_str, "--ipc", ipc_path, "--max-depth", max_depth_str,
+            NULL);
 
       perror("eroare la exec worker");
       exit(EXIT_FAILURE);
