@@ -121,10 +121,8 @@ clean-logs() {
 }
 
 clean-data() {
-    echo "curatare data..."
-
     rm -f data/* 2>/dev/null
-
+    echo "curatare data..."
     echo "gata"
 }
 
@@ -221,8 +219,8 @@ case "$SUBCOM" in
         echo "clean: sterge continutul din bin si tmp/obj"
         echo "run [exec]: ruleaza executabila primita ca argument"
         echo "test: ruleaza scripturile din tests si produce rezultatul acestora in tests"
-        echo "clean-logs: sterge continutul fisierului logs(in afara de apelul clean-logs in sine)"
-        echo "clean-data: sterge continutul fisierului data(in afara de apelul clean-data in sine)"
+        echo "clean-logs: sterge continutul fisierului /logs(in afara de apelul clean-logs in sine)"
+        echo "clean-data: sterge continutul fisierului /data"
         ;;
     clean-logs)
         clean-logs
