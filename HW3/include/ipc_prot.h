@@ -8,8 +8,8 @@
 
 #define IPC_MAGIC "INV4"
 #define FORMAT_VER 1
-#define MAX_JOB_Q_SZ 512
-#define MAX_RES_Q_SZ 1024
+#define MAX_JOB_Q_SZ 2048
+#define MAX_RES_Q_SZ 4096
 #define MAX_WORKERS 64
 
 // rep un director de parcurs

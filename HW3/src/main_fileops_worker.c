@@ -14,8 +14,16 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <signal.h>
+#include <errno.h>
 
 #include "../include/ipc_prot.h"
+
+volatile sig_atomic_t worker_got_sigterm = 0;
+
+void handle_worker_sigterm(int sig) {
+  worker_got_sigterm = 1;
+}
 
 void usage_instr(const char *prog_name) {
   fprintf(stderr, "Usage: %s --worker-id <id> --ipc <path>\n", prog_name);
@@ -44,31 +52,34 @@ void calculate_sha(const char *file_path, char *output_hash) {
     return;
   }
 
-  const int bufSize = 32768;
-  unsigned char *buffer = malloc(bufSize);
-  if (!buffer) {
-    fclose(file);
-    EVP_MD_CTX_free(mdctx);
-    strncpy(output_hash, "malloc error", 65);
-    return;
-  }
-
+  unsigned char buffer[32768];
   int bytesRead = 0;
 
-  while ((bytesRead = fread(buffer, 1, bufSize, file)) > 0) {
+  while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
     EVP_DigestUpdate(mdctx, buffer, bytesRead);
   }
 
   EVP_DigestFinal_ex(mdctx, hash, &hash_len);
 
   fclose(file);
-  free(buffer);
   EVP_MD_CTX_free(mdctx);
 
-  for (unsigned int i = 0; i < hash_len; i++)
-    sprintf(output_hash + i * 2, "%02x", hash[i]);
+  static const char hex[] = "0123456789abcdef";
+  for (unsigned int i = 0; i < hash_len; i++) {
+    output_hash[i * 2] = hex[hash[i] >> 4];
+    output_hash[i * 2 + 1] = hex[hash[i] & 0x0f];
+  }
+  output_hash[hash_len * 2] = '\0';
+}
 
-  output_hash[64] = '\0';
+void send_control_msg(int fd, const char *type, int worker_id,
+                      const char *extra) {
+  if (fd < 0)
+    return;
+  char buf[256];
+  int len = snprintf(buf, sizeof(buf), "T5MSG type=%s worker_id=%d %s\n", type,
+                     worker_id, extra);
+  write(fd, buf, len);
 }
 
 int main(int argc, char *argv[]) {
@@ -76,6 +87,8 @@ int main(int argc, char *argv[]) {
   char *ipc_path = NULL;
   int max_depth = -1;
   unsigned long long mil = 1000000;
+  int control_fd = -1;
+  int sim_time_ms = 0;
 
   struct timeval start_time, end_time;
   gettimeofday(&start_time, NULL);
@@ -87,6 +100,10 @@ int main(int argc, char *argv[]) {
       ipc_path = argv[++i];
     } else if (strcmp(argv[i], "--max-depth") == 0 && i + 1 < argc) {
       max_depth = atoi(argv[++i]);
+    } else if (strcmp(argv[i], "--control-fd") == 0 && i + 1 < argc) {
+      control_fd = atoi(argv[++i]);
+    } else if (strcmp(argv[i], "--simulate-work-ms") == 0 && i + 1 < argc) {
+      sim_time_ms = atoi(argv[++i]);
     }
   }
 
@@ -94,6 +111,12 @@ int main(int argc, char *argv[]) {
     usage_instr(argv[0]);
     return EXIT_FAILURE;
   }
+
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = handle_worker_sigterm;
+  sigaction(SIGTERM, &sa, NULL);
+  sigaction(SIGINT, &sa, NULL);
 
   int ipc_fd = open(ipc_path, O_RDWR);
   if (ipc_fd == -1) {
@@ -127,14 +150,18 @@ int main(int argc, char *argv[]) {
 
   while (1) {
     // asteapta un job sau semnalul de terminare
-    sem_wait(&layout->job_queue.items);
+    if (sem_wait(&layout->job_queue.items) == -1) {
+      if (errno == EINTR && worker_got_sigterm)
+        break;
+      continue;
+    }
 
     // verifica flag-ul de terminare
     sem_wait(&layout->glb_mutex);
     int should_stop = layout->terminate_flag;
     sem_post(&layout->glb_mutex);
 
-    if (should_stop) {
+    if (should_stop || worker_got_sigterm) {
       // trimitem si altui worker semnalul de terminare
       sem_post(&layout->job_queue.items);
       break;
@@ -148,10 +175,16 @@ int main(int argc, char *argv[]) {
     sem_post(&layout->job_queue.spaces);
     local_jobs_proc++;
 
+    if (sim_time_ms > 0) {
+      usleep(sim_time_ms * 1000);
+    }
+
     DIR *dir = opendir(current_job.dir_path);
     if (dir != NULL) {
       struct dirent *entry;
       while ((entry = readdir(dir)) != NULL) {
+        if (worker_got_sigterm)
+          break;
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
           continue;
 
@@ -177,8 +210,10 @@ int main(int argc, char *argv[]) {
             sem_wait(&layout->job_queue.mutex);
             strncpy(layout->job_queue.jobs[layout->job_queue.tail].dir_path,
                     full_path, PATH_MAX);
-            layout->job_queue.jobs[layout->job_queue.tail].depth = current_job.depth + 1;
-            layout->job_queue.tail = (layout->job_queue.tail + 1) % MAX_JOB_Q_SZ;
+            layout->job_queue.jobs[layout->job_queue.tail].depth =
+                current_job.depth + 1;
+            layout->job_queue.tail =
+                (layout->job_queue.tail + 1) % MAX_JOB_Q_SZ;
             sem_post(&layout->job_queue.mutex);
             sem_post(&layout->job_queue.items);
           }
@@ -211,6 +246,8 @@ int main(int argc, char *argv[]) {
       closedir(dir);
     }
 
+    send_control_msg(control_fd, "JOB_DONE", worker_id, "done");
+
     sem_wait(&layout->glb_mutex);
     layout->pending_jobs--;
     if (layout->pending_jobs == 0) {
@@ -221,6 +258,9 @@ int main(int argc, char *argv[]) {
     }
     sem_post(&layout->glb_mutex);
   }
+
+  send_control_msg(control_fd, "WORKER_EXITING", worker_id, "reason=shutdown");
+  if (control_fd >= 0) close(control_fd);
 
   gettimeofday(&end_time, NULL);
   uint64_t wall_time = (end_time.tv_sec - start_time.tv_sec) * 1000 +

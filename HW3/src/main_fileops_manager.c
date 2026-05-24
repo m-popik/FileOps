@@ -17,6 +17,13 @@
 #include <unistd.h>
 
 #include "../include/ipc_prot.h"
+#include <signal.h>
+
+volatile sig_atomic_t got_shutdown = 0;
+volatile sig_atomic_t got_sigusr = 0;
+
+void handle_shutdown(int sig) { got_shutdown = 1; }
+void handle_sigusr1(int sig) { got_sigusr = 1; }
 
 typedef struct {
   file_record_t *records;
@@ -27,7 +34,10 @@ typedef struct {
 
 void howto(const char *prog) {
   fprintf(stderr, "Ghid:");
-  fprintf(stderr, "Inventariere: %s --root <dir> --workers <N>\n", prog);
+  fprintf(stderr,
+          "Inventariere: %s --root <dir> --workers <N> --ipc <ipc_path> --db "
+          "<db_path> --max-depth <D>\n",
+          prog);
   fprintf(stderr, "Verificare: %s <db_path> --verify\n", prog);
   fprintf(stderr, "Sumar: %s <db_path> --dump\n", prog);
 }
@@ -81,7 +91,7 @@ ipc_layout_t *init_ipc(const char *ipc_path, const char *root_dir,
 // scrierea atomica a bazei de date
 
 void write_db_atomic(const char *db_path, ipc_layout_t *layout,
-                     record_collector_t *collection) {
+                     record_collector_t *collection, uint32_t complete_flag) {
   char tmp_path[PATH_MAX];
   snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", db_path);
   int fd = open(tmp_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
@@ -91,7 +101,6 @@ void write_db_atomic(const char *db_path, ipc_layout_t *layout,
   }
 
   // header
-  uint32_t complete_flag = 1;
   write(fd, IPC_MAGIC, 4);
   write(fd, &layout->version, sizeof(uint32_t));
   write(fd, &complete_flag, sizeof(uint32_t));
@@ -195,6 +204,10 @@ int main(int argc, char *argv[]) {
   int do_dump = 0;
   int max_depth = -1;
 
+  int timeout_sec = 5;
+  int sim_time = 0;
+  char *pid_path = NULL;
+
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
       root_dir = argv[++i];
@@ -210,11 +223,18 @@ int main(int argc, char *argv[]) {
       do_dump = 1;
     } else if (strcmp(argv[i], "--max-depth") == 0 && i + 1 < argc) {
       max_depth = atoi(argv[++i]);
+    } else if (strcmp(argv[i], "--graceful-timeout") == 0 && i + 1 < argc) {
+      timeout_sec = atoi(argv[++i]);
+    } else if (strcmp(argv[i], "--simulate-work-ms") == 0 && i + 1 < argc) {
+      sim_time = atoi(argv[++i]);
+    } else if (strcmp(argv[i], "--pid-file") == 0 && i + 1 < argc) {
+      pid_path = argv[++i];
     }
   }
 
   if (do_verify)
     return verify_db(db_path);
+
   if (do_dump)
     return dump_db(db_path);
 
@@ -223,23 +243,55 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
+  if (pid_path) {
+    FILE *f = fopen(pid_path, "w");
+    if (f) {
+      fprintf(f, "%d\n", getpid());
+      fclose(f);
+    }
+  }
+
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = handle_shutdown;
+  sigaction(SIGINT, &sa, NULL);
+  sigaction(SIGTERM, &sa, NULL);
+  sa.sa_handler = handle_sigusr1;
+  sigaction(SIGUSR1, &sa, NULL);
+
   ipc_layout_t *layout = init_ipc(ipc_path, root_dir, num_workers);
 
-  record_collector_t collection = {NULL, 0, 1000};
+  record_collector_t collection = {NULL, 0, 10000};
   collection.records = malloc(sizeof(file_record_t) * collection.capacity);
 
+  int control_pipe[2];
+  if (pipe(control_pipe) == -1) {
+    perror("eroare creare pipe");
+    return EXIT_FAILURE;
+  }
+
   for (int i = 0; i < num_workers; i++) {
+    fcntl(control_pipe[0], F_SETFL, O_NONBLOCK);
     pid_t pid = fork();
     if (pid == 0) {
+      close(control_pipe[0]);
+
       char worker_id_str[16];
       snprintf(worker_id_str, sizeof(worker_id_str), "%d", i);
 
       char max_depth_str[16];
       snprintf(max_depth_str, sizeof(max_depth_str), "%d", max_depth);
 
+      char control_fd_str[16];
+      snprintf(control_fd_str, sizeof(control_fd_str), "%d", control_pipe[1]);
+
+      char sim_time_str[16];
+      snprintf(sim_time_str, sizeof(sim_time_str), "%d", sim_time);
+
       // path, arg0, arg1,...
       execl("./bin/fileops_worker", "./bin/fileops_worker", "--worker-id",
             worker_id_str, "--ipc", ipc_path, "--max-depth", max_depth_str,
+            "--control-fd", control_fd_str, "--simulate-work-ms", sim_time_str,
             NULL);
 
       perror("eroare la exec worker");
@@ -249,8 +301,52 @@ int main(int argc, char *argv[]) {
     layout->stats[i].worker_id = i;
   }
 
+  close(control_pipe[1]);
   int workers_running = num_workers;
+  int is_complete = 1;
+  int in_shutdown = 0;
+  time_t shutdown_start = 0;
+  uint64_t total_bytes_processed = 0;
+
   while (workers_running > 0) {
+    if (got_sigusr) {
+      got_sigusr = 0;
+      printf("STATUS queued_jobs=%u active_jobs=0 files=%u bytes=%lu "
+             "workers_alive=%d complete=0\n",
+             layout->pending_jobs, collection.count, total_bytes_processed,
+             workers_running);
+      fflush(stdout);
+    }
+
+    if (got_shutdown && !in_shutdown) {
+      got_shutdown = 0;
+      in_shutdown = 1;
+      is_complete = 0;
+      shutdown_start = time(NULL);
+
+      sem_wait(&layout->glb_mutex);
+      layout->terminate_flag = 1;
+      sem_post(&layout->glb_mutex);
+
+      for (int i = 0; i < num_workers; i++)
+        sem_post(&layout->job_queue.items);
+      for (int i = 0; i < num_workers; i++) {
+        if (layout->stats[i].pid > 0)
+          kill(layout->stats[i].pid, SIGTERM);
+      }
+    }
+
+    if (in_shutdown && (time(NULL) - shutdown_start >= timeout_sec)) {
+      for (int i = 0; i < num_workers; i++) {
+        if (layout->stats[i].pid > 0)
+          kill(layout->stats[i].pid, SIGKILL);
+      }
+    }
+
+    char msg_buf[1024];
+    while (read(control_pipe[0], msg_buf, sizeof(msg_buf)) > 0) {
+    }
+
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_nsec += 100000000; // +100ms
@@ -260,18 +356,21 @@ int main(int argc, char *argv[]) {
     }
 
     if (sem_timedwait(&layout->results.items, &ts) == 0) {
-      sem_wait(&layout->results.mutex);
-      file_record_t rec = layout->results.records[layout->results.head];
-      layout->results.head = (layout->results.head + 1) % MAX_RES_Q_SZ;
-      sem_post(&layout->results.mutex);
-      sem_post(&layout->results.spaces);
+      do {
+        sem_wait(&layout->results.mutex);
+        file_record_t rec = layout->results.records[layout->results.head];
+        layout->results.head = (layout->results.head + 1) % MAX_RES_Q_SZ;
+        sem_post(&layout->results.mutex);
+        sem_post(&layout->results.spaces);
 
-      if (collection.count >= collection.capacity) {
-        collection.capacity *= 2;
-        collection.records = realloc(
-            collection.records, sizeof(file_record_t) * collection.capacity);
-      }
-      collection.records[collection.count++] = rec;
+        if (collection.count >= collection.capacity) {
+          collection.capacity *= 2;
+          collection.records = realloc(
+              collection.records, sizeof(file_record_t) * collection.capacity);
+        }
+        collection.records[collection.count++] = rec;
+        total_bytes_processed += rec.size;
+      } while (sem_trywait(&layout->results.items) == 0);
     }
 
     int status;
@@ -281,6 +380,7 @@ int main(int argc, char *argv[]) {
       for (int i = 0; i < num_workers; i++) {
         if (layout->stats[i].pid == p) {
           layout->stats[i].exit_status = WEXITSTATUS(status);
+          layout->stats[i].pid = 0; // mark as dead
           break;
         }
       }
@@ -302,9 +402,12 @@ int main(int argc, char *argv[]) {
     collection.records[collection.count++] = rec;
   }
 
-  write_db_atomic(db_path, layout, &collection);
+  write_db_atomic(db_path, layout, &collection, is_complete);
   free(collection.records);
   munmap(layout, sizeof(ipc_layout_t));
+
+  if (pid_path)
+    unlink(pid_path);
 
   return EXIT_SUCCESS;
 }
